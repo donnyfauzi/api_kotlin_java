@@ -12,19 +12,25 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 
+// Exception
+import com.donnyfauzi.api_kotlin_java.exception.EmailAlreadyInUseException
+import com.donnyfauzi.api_kotlin_java.exception.UserNotFoundException
+import com.donnyfauzi.api_kotlin_java.exception.InvalidPasswordException
+
 @Service
-class AuthService(
+class AuthService
+(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtTokenUtil: JwtTokenUtil
-) : UserDetailsService {
+) : UserDetailsService 
 
+{
     fun register(request: RegisterRequest): AuthResponse {
         // Cek apakah email sudah digunakan
         val existingUser = userRepository.findByEmail(request.email)
         if (existingUser.isPresent) {
-            val responseMessage = "Email already in use"
-            return AuthResponse(message = responseMessage)
+            throw EmailAlreadyInUseException("Email already in use")
         }
 
         val user = User(
@@ -34,20 +40,18 @@ class AuthService(
         )
 
         userRepository.save(user)
-
-        val responseMessage = "Registration successful"
-        val userData = mapOf("name" to user.name, "email" to user.email, "password" to user.password)
+        val userData = mapOf("name" to user.name, "email" to user.email)
 
         // Kembalikan response dengan pesan dan data user
-        return AuthResponse(message = responseMessage, user = userData)
+        return AuthResponse(message = " Registrasi berhasil", user = userData)
     }
 
     fun login(request: AuthRequest): AuthResponse {
         val user = userRepository.findByEmail(request.email)
-            .orElseThrow { UsernameNotFoundException("Email not found") }
+            .orElseThrow { UserNotFoundException("Email not found") }
 
         if (!passwordEncoder.matches(request.password, user.password)) {
-            throw IllegalArgumentException("Invalid password")
+            throw InvalidPasswordException("Invalid password")
         }
 
         val token = jwtTokenUtil.generateToken(user.email)
